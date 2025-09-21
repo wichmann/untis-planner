@@ -5,7 +5,7 @@ description = "Simple appointment planer using timetables from a WebUntis server
 authors = [
     {name = "Christian Wichmann", email = "wichmann@bbs-os-brinkstr.de"},
 ]
-dependencies = ["webuntis-cli>=0.6.6", "rich>=14.1.0", "pylint>=3.3.8"]
+dependencies = ["webuntis-cli>=0.6.6", "rich>=14.1.0", "pylint>=3.3.8", "streamlit>=1.49.1", "streamlit-calendar>=1.4.0"]
 requires-python = "==3.13.*"
 readme = "README.md"
 license = {text = "MIT"}
