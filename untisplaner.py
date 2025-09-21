@@ -6,7 +6,6 @@ timetables from WebUntis. It fetches the timetables of specified teachers and
 displays a weekly overview highlighting busy slots.
 """
 
-import os
 import locale
 import logging
 import datetime
@@ -34,18 +33,39 @@ class UntisPlaner:
             useragent="untisplaner")
         self.days = 5
         self.session.login()
-        self.start = datetime.datetime.now()
-        #self.start = self.start.replace(day=self.start.day, month=self.start.month)
-        self.end = self.start + datetime.timedelta(days=self.days)
+        self.start = datetime.datetime.now().date()
+        self.end = (datetime.datetime.now() + datetime.timedelta(days=self.days)).date()
+        self.list_of_all_teachers = None
+        self.current_school_year = None
 
-        teachers_to_plan = self.choose_teachers()
-        self.plan_week(teachers_to_plan)
+    def set_start_and_end(self, start: datetime.date, end: datetime.date):
+        """
+        Set the start and end date for fetching timetables.
+        """
+        self.start = start
+        self.end = end
+
+    def get_dates_for_school_year(self):
+        """
+        Fetch and return the start and end dates of the current school year.
+        """
+        if self.current_school_year is None:
+            self.current_school_year = self.session.schoolyears().current
+        return self.current_school_year.start.date(), self.current_school_year.end.date()
+
+    def get_list_of_teachers(self):
+        """
+        Fetch and return a list of all teachers from the WebUntis server.
+        """
+        if self.list_of_all_teachers is None:
+            self.list_of_all_teachers = self.session.teachers()
+        return self.list_of_all_teachers
 
     def choose_teachers(self):
         """
         Prompt user to input teacher names with auto-completion.
         """
-        list_of_all_teachers = self.session.teachers()
+        list_of_all_teachers = self.get_list_of_teachers()
         teacher_names = [t.long_name for t in list_of_all_teachers]
         teachers_to_plan = []
 
@@ -65,7 +85,7 @@ class UntisPlaner:
             if teacher in teacher_names:
                 teachers_to_plan.append(teacher)
             else:
-                print(f"Teacher '{teacher}' not found. Please try again.")
+                logging.info(f"Teacher '{teacher}' not found. Please try again.")
         return teachers_to_plan
 
     def plan_week(self, teachers_to_plan):
@@ -76,21 +96,24 @@ class UntisPlaner:
         all_lessons  = defaultdict(list)
         for teacher in teachers_to_plan:
             current_teacher = self.session.teachers().filter(surname=teacher)[0]
-            tt = self.get_timetable(current_teacher)
+            tt = self.get_timetable(current_teacher, start=self.start, end=self.end)
             l = self.extract_lessons(tt)
             for date in sorted(l.keys()):
                 all_lessons[date].append(current_teacher)
-        self.output_lessons(all_lessons)
+        return all_lessons
 
-    def get_timetable(self, teacher):
+    def get_timetable(self, teacher, start, end):
         """
         Fetch the timetable for a specific teacher within the defined date range.
         """
-        current_year = self.session.schoolyears().current
-        assert current_year.start <= self.start <= current_year.end, f"Start date not in current school year {self.start}"
-        assert current_year.start <= self.end <= current_year.end, f"End date not in current school year {self.end}"
-        logging.debug("creating time table between %s and %s", self.start, self.end)
-        tt = self.session.timetable(start=self.start, end=self.end, teacher=teacher)
+        # check if given dates are within the current school year
+        start_date, end_date = self.get_dates_for_school_year()
+        assert start_date <= start <= end_date, f"Start date not in current school year {start}"
+        assert start_date <= end <= end_date, f"End date not in current school year {end}"
+        # getting the timetable for the specified teacher and the given date range
+        self.set_start_and_end(start, end)
+        tt = self.session.timetable(start=start, end=end, teacher=teacher)
+        logging.debug(f"Fetched {len(tt)} periods for {teacher.long_name} from {start} to {end}")
         return tt
 
     def extract_lessons(self, timetable: webuntis.objects.PeriodList):
@@ -103,17 +126,19 @@ class UntisPlaner:
         lessons = defaultdict(list)
         for po in tt:
             # filter out periods that aren't lessons
-            if po.klassen:
+            if po.klassen and po.subjects[0].name != '---':
                 for t in po.teachers:
                     lessons[po.start].append(t)
-                    # more fields in data: po.start, po.end, po.klassen, po.teachers, po.rooms, po.subjects, po.code
+                    # more fields in data:
+                    # po.start, po.end, po.klassen, po.teachers, po.rooms, po.subjects, po.code
         return lessons
 
     def output_lessons(self, lessons: dict):
         """
         Display the lessons in a formatted table using rich.
         """
-        # create two dimensional array with "days" as columns and "hours" as rows beginning at index 1
+        # create two dimensional array with "days" as columns and "hours" as
+        # rows beginning at index 1
         timetable = [[[] for _ in range(10)] for _ in range(self.days)]
         for date, teachers in lessons.items():
             day = date.day - self.start.day - 1
@@ -142,8 +167,10 @@ class UntisPlaner:
             if hour:
                 timetable[day][hour].extend(teachers)
 
-        # colors in rich: https://rich.readthedocs.io/en/latest/appendix/colors.html#standard-colors
-        table = Table(title='[bold bright_blue]Untis Planer[/bold bright_blue]', show_lines=True, style="bright_white", header_style="bright_blue")
+        # colors in rich:
+        # https://rich.readthedocs.io/en/latest/appendix/colors.html
+        table = Table(title='[bold bright_blue]Untis Planer[/bold bright_blue]',
+                      show_lines=True, style="bright_white", header_style="bright_blue")
         for i in range(self.days):
             day_label = (self.start + datetime.timedelta(days=i)).strftime("%a %d.%m")
             table.add_column(day_label, justify="center", style="cyan", no_wrap=True)
@@ -173,11 +200,14 @@ def main():
     locale.setlocale(locale.LC_ALL, '')
     logging.basicConfig(level=logging.INFO)
     logging.debug("Reading config file")
-    configfile = os.path.expanduser('webuntis-config.ini')
+    configfile = 'webuntis-config.ini'
     config = configparser.ConfigParser()
     config.read(configfile)
     cred = config['credentials']
-    UntisPlaner(cred['user'], cred['password'], cred['server'], cred['school'])
+    up = UntisPlaner(cred['user'], cred['password'], cred['server'], cred['school'])
+    teachers_to_plan = up.choose_teachers()
+    all_lessons = up.plan_week(teachers_to_plan)
+    up.output_lessons(all_lessons)
 
 
 if __name__ == "__main__":
