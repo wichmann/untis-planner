@@ -167,13 +167,22 @@ def prepare_legend():
                 ui.space()
 
 
+def preload_logged_in_user(request: Request, teacher_list):
+    """Preloads the logged-in user's name into the dropdown if available."""
+    if 'X-authentik-username' in request.headers:
+        username_from_request = request.headers['X-authentik-username']
+        if DEBUG:
+            print(f"Authenticated user: {username_from_request}")
+        teacher_name = [teacher.surname for teacher in teacher_list if teacher.surname.casefold() == username_from_request.casefold()]
+        if teacher_name:
+            app.storage.selected_teachers.append(teacher_name[0])
+            prepare_events()
+            prepare_legend.refresh()
+
+
 @ui.page('/')
 def main(request: Request) -> RedirectResponse | None:
     """Main function to set up the NiceGUI app, load configuration, and initialize components."""
-    print(request.headers)
-    if 'X-authentik-username' in request.headers:
-        username = request.headers['X-authentik-username']
-        print(f"Authenticated user: {username}")
     # load configuration from file
     configfile = 'webuntis-config.ini'
     config = configparser.ConfigParser()
@@ -192,6 +201,7 @@ def main(request: Request) -> RedirectResponse | None:
     prepare_dropdown(teacher_list)
     prepare_calendar()
     prepare_legend()
+    preload_logged_in_user(request, teacher_list)
 
 
 if __name__ in {'__main__', '__mp_main__'}:
