@@ -12,7 +12,7 @@ import webuntis
 import webuntis.objects
 
 
-class UntisPlaner:
+class UntisPlanner:
     """
     A class to fetch and display timetables for multiple teachers from WebUntis.
     """

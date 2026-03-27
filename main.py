@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 
 from nicegui import app, ui, events
 
-import untisplaner
+import untisplanner
 from fullcalendar import FullCalendar
 
 
@@ -174,7 +174,7 @@ def main():
     # create an UntisPlaner instance
     cred = config['credentials']
     global UNTIS_API
-    UNTIS_API = untisplaner.UntisPlaner(cred['user'], cred['password'], cred['server'], cred['school'])
+    UNTIS_API = untisplanner.UntisPlanner(cred['user'], cred['password'], cred['server'], cred['school'])
     teacher_list = UNTIS_API.get_list_of_teachers()
     # define defaults
     app.storage.start_date = datetime.now().date() - timedelta(days=datetime.now().weekday())

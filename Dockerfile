@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y \
 
 # copy all necessary files into the image
 COPY main.py /app/
-COPY untisplaner.py /app/
+COPY untisplanner.py /app/
 COPY requirements.txt /app/
 COPY README.md /app/
 COPY LICENSE /app/

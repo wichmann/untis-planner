@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from rich.console import Console
 from rich.table import Table
 
-import untisplaner
+import untisplanner
 
 
 def choose_teachers(list_of_all_teachers):
@@ -116,7 +116,7 @@ def main():
     config = configparser.ConfigParser()
     config.read(configfile)
     cred = config['credentials']
-    up = untisplaner.UntisPlaner(cred['user'], cred['password'], cred['server'], cred['school'])
+    up = untisplanner.UntisPlanner(cred['user'], cred['password'], cred['server'], cred['school'])
     start = datetime.fromisoformat('2026-04-04').date()
     end = start + timedelta(days=7)
     up.set_start_and_end(start, end)
