@@ -54,12 +54,25 @@ def prepare_events():
 def prepare_dropdown(teacher_list):  
     teacher_names = [teacher.surname for teacher in teacher_list]
     ui.select(options=teacher_names, multiple=True, with_input=True, new_value_mode='add-unique',
-              clearable=True, label="Select teachers to display:", on_change=handle_teacher_change)
+              clearable=True, label='Select teachers to display:', on_change=handle_teacher_change)
 
 
 def handle_teacher_change(event: events.GenericEventArguments):
-    app.storage.selected_teachers = event.value
-    prepare_events()
+    if len(event.value) > 5:
+        # revert list to previous value if more than 5 items are selected
+        event.sender.value = app.storage.selected_teachers
+        ui.notify("⚠️ Maximum 5 teachers allowed", color="warning")
+    else:
+        if DEBUG:
+            added = set(event.value) - set(app.storage.selected_teachers)
+            removed = set(app.storage.selected_teachers) - set(event.value)
+            if added:
+                ui.notify(f'Added: {", ".join(added)}')
+            if removed:
+                ui.notify(f'Removed: {", ".join(removed)}')
+        app.storage.selected_teachers = event.value
+        prepare_events()
+        prepare_legend.refresh()
 
 
 def prepare_calendar():
