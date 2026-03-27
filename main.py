@@ -9,6 +9,8 @@ weekly overview highlighting busy slots.
 import configparser
 from datetime import datetime, timedelta
 
+from fastapi import Request
+from starlette.responses import RedirectResponse
 from nicegui import app, ui, events
 
 import untisplanner
@@ -165,8 +167,13 @@ def prepare_legend():
                 ui.space()
 
 
-def main():
+@ui.page('/')
+def main(request: Request) -> RedirectResponse | None:
     """Main function to set up the NiceGUI app, load configuration, and initialize components."""
+    print(request.headers)
+    if 'X-authentik-username' in request.headers:
+        username = request.headers['X-authentik-username']
+        print(f"Authenticated user: {username}")
     # load configuration from file
     configfile = 'webuntis-config.ini'
     config = configparser.ConfigParser()
@@ -185,9 +192,8 @@ def main():
     prepare_dropdown(teacher_list)
     prepare_calendar()
     prepare_legend()
-    # run the NiceGUI app
-    ui.run(host='0.0.0.0', port=8080, favicon='📆', language='de-DE')
 
 
 if __name__ in {'__main__', '__mp_main__'}:
-    main()
+    # run the NiceGUI app
+    ui.run(host='0.0.0.0', port=8080, favicon='📆', language='de-DE')
