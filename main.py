@@ -41,14 +41,18 @@ def prepare_events():
         for po in tt:
             # filter out periods that aren't lessons
             if po.klassen and po.subjects[0].name != '---':
-                for _ in po.teachers:
-                    # remove existing event for the teacher in the same time slot to avoid duplicates
-                    fullCalendar.remove_event(title=teacher, start=str(po.start), end=str(po.end))
-                    # create new event for all periods of the teacher
-                    fullCalendar.add_event(title=teacher, start=str(po.start), end=str(po.end),
-                                           display='block', color=TEACHER_COLORS[i % len(TEACHER_COLORS)],
-                                           classes=', '.join(str(klasse) for klasse in po.klassen),
-                                           subjects=', '.join(str(subject) for subject in po.subjects))
+                try:
+                    for _ in po.teachers:
+                        # remove existing event for the teacher in the same time slot to avoid duplicates
+                        fullCalendar.remove_event(title=teacher, start=str(po.start), end=str(po.end))
+                        # create new event for all periods of the teacher
+                        fullCalendar.add_event(title=teacher, start=str(po.start), end=str(po.end),
+                                            display='block', color=TEACHER_COLORS[i % len(TEACHER_COLORS)],
+                                            classes=', '.join(str(klasse) for klasse in po.klassen),
+                                            subjects=', '.join(str(subject) for subject in po.subjects))
+                except IndexError as e:
+                    if DEBUG:
+                        ui.notify(f"Error processing period: {e}", color="error")
 
 
 def prepare_dropdown(teacher_list):  
