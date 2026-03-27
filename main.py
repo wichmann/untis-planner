@@ -15,7 +15,7 @@ import untisplaner
 from fullcalendar import FullCalendar
 
 
-APP_TITLE = 'UntisPlaner'
+APP_TITLE = 'UntisPlanner'
 
 DEBUG = False
 
