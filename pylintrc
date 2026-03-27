@@ -1,5 +1,5 @@
 [MESSAGES CONTROL]
-disable=no-member,global-statement
+disable=no-member,global-statement,logging-fstring-interpolation
 
 [REPORTS]
 output-format=colorized
