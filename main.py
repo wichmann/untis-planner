@@ -173,11 +173,13 @@ def preload_logged_in_user(request: Request, teacher_list):
         username_from_request = request.headers['X-authentik-username']
         if DEBUG:
             print(f"Authenticated user: {username_from_request}")
-        teacher_name = [teacher.surname for teacher in teacher_list if teacher.surname.casefold() == username_from_request.casefold()]
+        teacher_name = [teacher.surname for teacher in teacher_list if str(teacher.surname).casefold() == str(username_from_request).casefold()]
         if teacher_name:
             app.storage.selected_teachers.append(teacher_name[0])
             prepare_events()
             prepare_legend.refresh()
+        return username_from_request
+    return None
 
 
 @ui.page('/')
@@ -201,7 +203,8 @@ def main(request: Request) -> RedirectResponse | None:
     prepare_dropdown(teacher_list)
     prepare_calendar()
     prepare_legend()
-    preload_logged_in_user(request, teacher_list)
+    username = preload_logged_in_user(request, teacher_list)
+    ui.label(str(username))
 
 
 if __name__ in {'__main__', '__mp_main__'}:
