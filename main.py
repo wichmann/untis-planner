@@ -17,6 +17,9 @@ from nicegui import app, ui, events
 
 APP_TITLE = 'UntisPlaner'
 
+DEBUG = False
+
+
 
 def prepare_events():
     """
@@ -65,27 +68,27 @@ def handle_teacher_change(event: events.GenericEventArguments):
 def prepare_calendar():
     global fullCalendar
     options = {
-            "editable": False,
-            "selectable": False,
-            "businessHours": {
-                "daysOfWeek": [1, 2, 3, 4, 5],
-                "startTime": "08:00",
-                "endTime": "16:00",
+            'editable': False,
+            'selectable': False,
+            'businessHours': {
+                'daysOfWeek': [1, 2, 3, 4, 5],
+                'startTime': '08:00',
+                'endTime': '16:00',
             },
-            "locale": "de",
-            "height": "800px",
-            "timeZone": 'local',
-            "allDaySlot": False,
-            "nowIndicator": True,
-            "weekends": False,
-            "headerToolbar": {
-                "left": "",
-                "center": "title",
-                "right": "prev,next",
+            'locale': 'de',
+            'height': '800px',
+            'timeZone': 'local',
+            'allDaySlot': False,
+            'nowIndicator': True,
+            'weekends': False,
+            'headerToolbar': {
+                'left': '',
+                'center': 'title',
+                'right': 'prev,next',
             },
-            "slotMinTime": "06:00:00",
-            "slotMaxTime": "18:00:00",
-            "initialView": "timeGridWeek",
+            'slotMinTime': '06:00:00',
+            'slotMaxTime': '21:00:00',
+            'initialView': 'timeGridWeek',
             'height': 'auto',
             'width': 'auto',
             'events': [],
@@ -104,15 +107,20 @@ def prepare_calendar():
 
 def handle_click(event: events.GenericEventArguments):
     if 'info' in event.args:
-        print(f"Clicked on event: {event.args['info']}")
-        ui.notify(event.args['info']['event'])
+        e = event.args['info']['event']
+        title = e['title']
+        classes = e['extendedProps']['classes']
+        subjects = e['extendedProps']['subjects']
+        if DEBUG:
+            ui.notify(f'Teacher: {title}, Class: {classes}, Subject: {subjects}')
 
 
 def handle_change(event: events.GenericEventArguments):
     if 'info' in event.args:
         start_date = datetime.fromisoformat(event.args['info']['startStr']).date()
         end_date = datetime.fromisoformat(event.args['info']['endStr']).date()
-        print(f"Current view range: {start_date} - {end_date}")
+        if DEBUG:
+            print(f'Current view range: {start_date} - {end_date}')
         app.storage.start_date = start_date
         app.storage.end_date = end_date
         prepare_events()
