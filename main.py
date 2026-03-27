@@ -118,6 +118,16 @@ def handle_change(event: events.GenericEventArguments):
         prepare_events()
 
 
+@ui.refreshable
+def prepare_legend():
+    with ui.row().classes('justify-center gap-12 w-full'):
+        for i, teacher_name in enumerate(app.storage.selected_teachers):
+            with ui.column():
+                color = TEACHER_COLORS[i % len(TEACHER_COLORS)]
+                ui.label(teacher_name).classes('text-lg').style(f'background-color: {color}; padding: 10px 20px; border-radius: 10px; color: white; font-weight: bold;font-size: 125%')
+                ui.space()
+
+
 def main():
     # load configuration from file
     configfile = 'webuntis-config.ini'
@@ -133,12 +143,13 @@ def main():
     app.storage.end_date = app.storage.start_date + timedelta(days=6)
     app.storage.selected_teachers = []
     # build UI elements
-    ui.html(f'<h1 style="text-align: center;">{APP_TITLE}</h1>')
+    ui.html(f'<h1>{APP_TITLE}</h1>')
     prepare_dropdown(teacher_list)
     prepare_calendar()
+    prepare_legend()
     # run the NiceGUI app
-    ui.run()
+    ui.run(host='0.0.0.0', port=8080, favicon='📆', language='de-DE')
 
 
-if __name__ in {"__main__", "__mp_main__"}:
+if __name__ in {'__main__', '__mp_main__'}:
     main()
