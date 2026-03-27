@@ -19,22 +19,22 @@ APP_TITLE = 'UntisPlaner'
 
 DEBUG = False
 
+# create list with five colors for teachers
+TEACHER_COLORS = [
+    "#f5766f",
+    '#fad07b',
+    "#62d5dd",
+    '#c77dff',
+    "#71d93a"
+]
 
 
 def prepare_events():
     """
     Prepare calendar events based on the selected teachers and date range.
     """
-    # create list with five colors for teachers
-    teacher_colors = [
-        "#f5876f",
-        "#fad07b",
-        "#55d1da",
-        "#c77dff",
-        "#ff6f91"
-    ]
     global up, fullCalendar
-    calendar_events = []
+    fullCalendar.clear_events()
     for i, teacher in enumerate(app.storage.selected_teachers):
         current_teacher = up.session.teachers().filter(surname=teacher)[0]
         tt = up.get_timetable(current_teacher, start=app.storage.start_date, end=app.storage.end_date)
@@ -42,16 +42,13 @@ def prepare_events():
             # filter out periods that aren't lessons
             if po.klassen and po.subjects[0].name != '---':
                 for _ in po.teachers:
-                    event = {
-                        "title": teacher,
-                        "start": str(po.start),
-                        "end": str(po.end),
-                        'display': 'block',
-                        'color': teacher_colors[i % len(teacher_colors)],
-                        'resourceId': str(po.klassen),
-                    }
-                    fullCalendar.add_event(title=teacher, start=str(po.start), end=str(po.end), display='block', color=teacher_colors[i % len(teacher_colors)], resourceId=str(po.klassen))
-                    calendar_events.append(event)
+                    # remove existing event for the teacher in the same time slot to avoid duplicates
+                    fullCalendar.remove_event(title=teacher, start=str(po.start), end=str(po.end))
+                    # create new event for all periods of the teacher
+                    fullCalendar.add_event(title=teacher, start=str(po.start), end=str(po.end),
+                                           display='block', color=TEACHER_COLORS[i % len(TEACHER_COLORS)],
+                                           classes=', '.join(str(klasse) for klasse in po.klassen),
+                                           subjects=', '.join(str(subject) for subject in po.subjects))
 
 
 def prepare_dropdown(teacher_list):  
