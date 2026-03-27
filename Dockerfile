@@ -8,8 +8,8 @@ LABEL org.opencontainers.image.description="Simple appointment planner using tim
 LABEL org.opencontainers.image.version="0.1.0"
 LABEL org.opencontainers.image.authors="wichmann@bbs-os-brinkstr.de"
 LABEL org.opencontainers.image.licenses="MIT License"
-#LABEL org.opencontainers.image.documentation="https://github.com/wichmann/untisplaner/blob/master/README.md"
-#LABEL org.opencontainers.image.source="https://github.com/wichmann/untisplaner"
+LABEL org.opencontainers.image.documentation="https://github.com/wichmann/untis-planner/blob/master/README.md"
+LABEL org.opencontainers.image.source="https://github.com/wichmann/untis-planner"
 
 WORKDIR /app
 

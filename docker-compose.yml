@@ -1,7 +1,7 @@
 services:
   untisplanner:
-    #build: https://github.com/wichmann/untisplanner.git
-    image: ghcr.io/wichmann/untisplanner:master
+    #build: https://github.com/wichmann/untis-planner.git
+    image: ghcr.io/wichmann/untis-planner:master
     restart: unless-stopped
     ports:
       - "8080:8080"
