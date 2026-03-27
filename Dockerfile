@@ -13,15 +13,15 @@ LABEL org.opencontainers.image.licenses="MIT License"
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    software-properties-common \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 # copy all necessary files into the image
 COPY main.py /app/
 COPY untisplanner.py /app/
+COPY fullcalendar.py /app/
+COPY fullcalendar.js /app/
+COPY lib/ /app/lib/
+COPY webuntis-config.ini /app/
 COPY requirements.txt /app/
 COPY README.md /app/
 COPY LICENSE /app/
