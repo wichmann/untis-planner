@@ -1,0 +1,29 @@
+services:
+  untisplanner:
+    #build: https://github.com/wichmann/untisplanner.git
+    image: ghcr.io/wichmann/untisplanner:master
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+    volumes:
+      - ./webuntis-config.actual.ini:/app/webuntis-config.ini
+    #labels:
+    #  - "traefik.enable=true"
+    #  - "traefik.http.services.untisplanner.loadbalancer.server.port=8080"
+    #  - "traefik.http.routers.untisplanner.rule=Host(`${UNTISPLANNER_DOMAIN}`)"
+    #  - "traefik.http.routers.untisplanner.tls=true"
+    #  - "traefik.http.routers.untisplanner.tls.certresolver=letsencrypt"
+    #networks:
+    #  - untisplanner_net
+
+#networks:
+#  untisplanner_net:
+#    # https://docs.docker.com/compose/networking/#use-a-pre-existing-network
+#    name: infrastructure_default
+#    external: true

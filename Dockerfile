@@ -34,6 +34,6 @@ EXPOSE 8080
 
 # add health check using NiceGUI's built-in diagnostics endpoint
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:8080/_nicegui/diagnostics || exit 1
+  CMD curl -f http://localhost:8080/ || exit 1
 
 ENTRYPOINT ["python", "main.py"]
