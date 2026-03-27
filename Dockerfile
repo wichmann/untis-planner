@@ -1,8 +1,9 @@
-# app/Dockerfile
+# untisplanner - Dockerfile
 
+# use official Python runtime as base image
 FROM python:3.14-slim
 
-LABEL org.opencontainers.image.title="UntisPlaner"
+LABEL org.opencontainers.image.title="UntisPlanner"
 LABEL org.opencontainers.image.description="Simple appointment planner using timetables from a WebUntis server"
 LABEL org.opencontainers.image.version="0.1.0"
 LABEL org.opencontainers.image.authors="wichmann@bbs-os-brinkstr.de"
@@ -19,17 +20,20 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # copy all necessary files into the image
-COPY app.py /app/
+COPY main.py /app/
 COPY untisplaner.py /app/
 COPY requirements.txt /app/
 COPY README.md /app/
 COPY LICENSE /app/
 COPY pyproject.toml /app/
 
-RUN pip3 install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-EXPOSE 8501
+# expose port used by NiceGUI (default: 8080)
+EXPOSE 8080
 
-HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health
+# add health check using NiceGUI's built-in diagnostics endpoint
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:8080/_nicegui/diagnostics || exit 1
 
-ENTRYPOINT ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+ENTRYPOINT ["python", "main.py"]

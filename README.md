@@ -10,11 +10,11 @@ Run app for development:
 
 Build Docker container for development:
 
-    docker build -t untisplaner .
-    docker run -p 8501:8501 -d untisplaner
+    docker build -t untisplanner .
+    docker run -p 8080:8080 -d untisplanner
 
 ## Links
-* https://github.com/im-perativa/streamlit-calendar/
+* https://github.com/zauberzeug/nicegui
+* https://nicegui.io/documentation
 * https://fullcalendar.io/demos
-* https://docs.streamlit.io/develop/api-reference/widgets
 * https://github.com/python-webuntis/python-webuntis
