@@ -1,4 +1,4 @@
-# UntisPlaner - Simple appointment planer using timetables from a WebUntis server
+# UntisPlaner - Simple appointment planner using timetables from a WebUntis server
 A simple command line tool to plan appointments for multiple teachers using
 timetables from WebUntis. It fetches the timetables of specified teachers and
 displays a weekly overview highlighting busy slots.
@@ -17,3 +17,4 @@ Build Docker container for development:
 * https://github.com/im-perativa/streamlit-calendar/
 * https://fullcalendar.io/demos
 * https://docs.streamlit.io/develop/api-reference/widgets
+* https://github.com/python-webuntis/python-webuntis
