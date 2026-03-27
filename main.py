@@ -9,10 +9,10 @@ weekly overview highlighting busy slots.
 import configparser
 from datetime import datetime, timedelta
 
-from fullcalendar import FullCalendar
+from nicegui import app, ui, events
 
 import untisplaner
-from nicegui import app, ui, events
+from fullcalendar import FullCalendar
 
 
 APP_TITLE = 'UntisPlaner'
@@ -28,25 +28,27 @@ TEACHER_COLORS = [
     "#71d93a"
 ]
 
+UNTIS_API = None
+LESSON_CALENDAR = None
+
 
 def prepare_events():
     """
     Prepare calendar events based on the selected teachers and date range.
     """
-    global up, fullCalendar
-    fullCalendar.clear_events()
+    LESSON_CALENDAR.clear_events()
     for i, teacher in enumerate(app.storage.selected_teachers):
-        current_teacher = up.session.teachers().filter(surname=teacher)[0]
-        tt = up.get_timetable(current_teacher, start=app.storage.start_date, end=app.storage.end_date)
+        current_teacher = UNTIS_API.session.teachers().filter(surname=teacher)[0]
+        tt = UNTIS_API.get_timetable(current_teacher, start=app.storage.start_date, end=app.storage.end_date)
         for po in tt:
             # filter out periods that aren't lessons
             if po.klassen and po.subjects[0].name != '---':
                 try:
                     for _ in po.teachers:
                         # remove existing event for the teacher in the same time slot to avoid duplicates
-                        fullCalendar.remove_event(title=teacher, start=str(po.start), end=str(po.end))
+                        LESSON_CALENDAR.remove_event(title=teacher, start=str(po.start), end=str(po.end))
                         # create new event for all periods of the teacher
-                        fullCalendar.add_event(title=teacher, start=str(po.start), end=str(po.end),
+                        LESSON_CALENDAR.add_event(title=teacher, start=str(po.start), end=str(po.end),
                                             display='block', color=TEACHER_COLORS[i % len(TEACHER_COLORS)],
                                             classes=', '.join(str(klasse) for klasse in po.klassen),
                                             subjects=', '.join(str(subject) for subject in po.subjects))
@@ -55,15 +57,19 @@ def prepare_events():
                         ui.notify(f"Error processing period: {e}", color="error")
 
 
-def prepare_dropdown(teacher_list):  
+def prepare_dropdown(teacher_list):
+    """Gets last names for all teachers and prepares the dropdown."""
     teacher_names = [teacher.surname for teacher in teacher_list]
     ui.select(options=teacher_names, multiple=True, with_input=True, new_value_mode='add-unique',
               clearable=True, label='Select teachers to display:', on_change=handle_teacher_change)
 
 
 def handle_teacher_change(event: events.GenericEventArguments):
+    """
+    Updates the list of selected teachers based on changes in the dropdown.
+    Reverts the list to the previous value if more than 5 items are selected.
+    """
     if len(event.value) > 5:
-        # revert list to previous value if more than 5 items are selected
         event.sender.value = app.storage.selected_teachers
         ui.notify("⚠️ Maximum 5 teachers allowed", color="warning")
     else:
@@ -80,7 +86,12 @@ def handle_teacher_change(event: events.GenericEventArguments):
 
 
 def prepare_calendar():
-    global fullCalendar
+    """
+    Prepares the FullCalendar component with specified options and styling. No
+    events are added at this stage; they will be added dynamically based on the
+    selected teachers and date range by prepare_events().
+    """
+    global LESSON_CALENDAR
     options = {
             'editable': False,
             'selectable': False,
@@ -90,7 +101,6 @@ def prepare_calendar():
                 'endTime': '16:00',
             },
             'locale': 'de',
-            'height': '800px',
             'timeZone': 'local',
             'allDaySlot': False,
             'nowIndicator': True,
@@ -116,10 +126,11 @@ def prepare_calendar():
             font-weight: 800;
         }
     """
-    fullCalendar = FullCalendar(options, custom_css, on_click=handle_click, on_change=handle_change)
+    LESSON_CALENDAR = FullCalendar(options, custom_css, on_click=handle_click, on_change=handle_change)
 
 
 def handle_click(event: events.GenericEventArguments):
+    """Show notification with information about the clicked lesson."""
     if 'info' in event.args:
         e = event.args['info']['event']
         title = e['title']
@@ -130,6 +141,7 @@ def handle_click(event: events.GenericEventArguments):
 
 
 def handle_change(event: events.GenericEventArguments):
+    """Update the date range in storage when the calendar view changes and refresh events."""
     if 'info' in event.args:
         start_date = datetime.fromisoformat(event.args['info']['startStr']).date()
         end_date = datetime.fromisoformat(event.args['info']['endStr']).date()
@@ -142,24 +154,28 @@ def handle_change(event: events.GenericEventArguments):
 
 @ui.refreshable
 def prepare_legend():
+    """Prepares a legend showing the selected teachers with their corresponding colors."""
     with ui.row().classes('justify-center gap-12 w-full'):
         for i, teacher_name in enumerate(app.storage.selected_teachers):
             with ui.column():
                 color = TEACHER_COLORS[i % len(TEACHER_COLORS)]
-                ui.label(teacher_name).classes('text-lg').style(f'background-color: {color}; padding: 10px 20px; border-radius: 10px; color: white; font-weight: bold;font-size: 125%')
+                s = f'background-color: {color}; color: white; padding: 10px 20px;' \
+                     'border-radius: 10px; font-weight: bold;font-size: 125%'
+                ui.label(teacher_name).classes('text-lg').style(s)
                 ui.space()
 
 
 def main():
+    """Main function to set up the NiceGUI app, load configuration, and initialize components."""
     # load configuration from file
     configfile = 'webuntis-config.ini'
     config = configparser.ConfigParser()
     config.read(configfile)
     # create an UntisPlaner instance
     cred = config['credentials']
-    global up
-    up = untisplaner.UntisPlaner(cred['user'], cred['password'], cred['server'], cred['school'])
-    teacher_list = up.get_list_of_teachers()
+    global UNTIS_API
+    UNTIS_API = untisplaner.UntisPlaner(cred['user'], cred['password'], cred['server'], cred['school'])
+    teacher_list = UNTIS_API.get_list_of_teachers()
     # define defaults
     app.storage.start_date = datetime.now().date() - timedelta(days=datetime.now().weekday())
     app.storage.end_date = app.storage.start_date + timedelta(days=6)

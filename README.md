@@ -13,6 +13,10 @@ Build Docker container for development:
     docker build -t untisplanner .
     docker run -p 8080:8080 -d untisplanner
 
+Check with pylint:
+
+    pdm run pylint main.py
+
 ## Links
 * https://github.com/zauberzeug/nicegui
 * https://nicegui.io/documentation

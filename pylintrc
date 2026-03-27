@@ -1,0 +1,8 @@
+[MESSAGES CONTROL]
+disable=no-member,global-statement
+
+[REPORTS]
+output-format=colorized
+
+[FORMAT]
+max-line-length=120
