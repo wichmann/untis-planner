@@ -48,7 +48,7 @@ def prepare_sidebar(up, teacher_list):
     return selected_date, selected_teachers
 
 
-def prepare_events(up, selected_teachers, selected_date):
+def prepare_events(up, selected_teachers, start_date, end_date):
     """
     Prepare calendar events based on the selected teachers and date range.
     """
@@ -61,11 +61,11 @@ def prepare_events(up, selected_teachers, selected_date):
         "#ff6f91"
     ]
     calendar_events = []
-    if len(selected_date) < 2:
+    if not start_date or not end_date:
         return calendar_events
     for i, teacher in enumerate(selected_teachers):
         current_teacher = up.session.teachers().filter(surname=teacher)[0]
-        tt = up.get_timetable(current_teacher, start=selected_date[0], end=selected_date[1])
+        tt = up.get_timetable(current_teacher, start=start_date, end=end_date)
         for po in tt:
             # filter out periods that aren't lessons
             if po.klassen and po.subjects[0].name != '---':
@@ -82,10 +82,12 @@ def prepare_events(up, selected_teachers, selected_date):
     return calendar_events
 
 
-def prepare_calendar(up, selected_teachers, selected_date):
+def prepare_calendar(up, selected_teachers):
     """
     Prepare and display the calendar with events.
     """
+    start_date = st.session_state.get("StartDate", datetime.now().date())
+    end_date = st.session_state.get("EndDate", datetime.now().date() + timedelta(days=7))
     calendar_options = {
         "editable": False,
         "selectable": False,
@@ -108,6 +110,7 @@ def prepare_calendar(up, selected_teachers, selected_date):
         "slotMinTime": "06:00:00",
         "slotMaxTime": "18:00:00",
         "initialView": "timeGridWeek",
+        "initialDate": str(start_date),
     }
     custom_css="""
         .fc-event-time {
@@ -117,14 +120,21 @@ def prepare_calendar(up, selected_teachers, selected_date):
             font-weight: 800;
         }
     """
-    calendar_events = prepare_events(up, selected_teachers, selected_date)
-    calendar = st_calendar(
-        events=calendar_events,
+    print(f"Date range in session: {start_date} - {end_date}")
+    calendar_state = st_calendar(
+        events=prepare_events(up, selected_teachers, start_date, end_date),
         options=calendar_options,
         custom_css=custom_css,
-        key='calendar',
+        key='teacher-calendar',
         )
-    st.write(calendar)
+    if 'callback' in calendar_state and calendar_state['callback'] == 'eventsSet' and 'view' in calendar_state['eventsSet']:
+        start = calendar_state['eventsSet']['view']['currentStart']
+        end = calendar_state['eventsSet']['view']['currentEnd']
+        st.session_state['StartDate'] = datetime.fromisoformat(start).date()
+        st.session_state['EndDate'] = datetime.fromisoformat(end).date()
+        print(f"Date range in calendar: {datetime.fromisoformat(start).date()} - {datetime.fromisoformat(end).date()}")
+    # display calendar events for debugging
+    st.write(calendar_state)
 
 
 def main():
@@ -156,7 +166,7 @@ belegten Zeitfenstern an."""
     teacher_list = up.get_list_of_teachers()
     # build UI components and fill calendar with events
     selected_date, selected_teachers = prepare_sidebar(up, teacher_list)
-    prepare_calendar(up, selected_teachers, selected_date)
+    prepare_calendar(up, selected_teachers)
 
 
 if __name__ == "__main__":
