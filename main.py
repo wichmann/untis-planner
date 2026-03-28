@@ -54,9 +54,11 @@ def prepare_events():
                                             display='block', color=TEACHER_COLORS[i % len(TEACHER_COLORS)],
                                             classes=', '.join(str(klasse) for klasse in po.klassen),
                                             subjects=', '.join(str(subject) for subject in po.subjects))
+                        if DEBUG:
+                            print(f'Added event: Teacher={teacher}, Start={po.start}, End={po.end}, Classes={po.klassen}, Subjects={po.subjects}')
                 except IndexError as e:
                     if DEBUG:
-                        ui.notify(f"Error processing period: {e}", color="error")
+                        ui.notify(f'Error processing period: {e}', color='error')
 
 
 def prepare_dropdown(teacher_list):
@@ -100,7 +102,7 @@ def prepare_calendar():
             'businessHours': {
                 'daysOfWeek': [1, 2, 3, 4, 5],
                 'startTime': '08:00',
-                'endTime': '16:00',
+                'endTime': '15:00',
             },
             'locale': 'de',
             'timeZone': 'local',
@@ -203,10 +205,8 @@ def main(request: Request) -> RedirectResponse | None:
     prepare_dropdown(teacher_list)
     prepare_calendar()
     prepare_legend()
-    username = preload_logged_in_user(request, teacher_list)
-    ui.label(str(username))
 
 
 if __name__ in {'__main__', '__mp_main__'}:
     # run the NiceGUI app
-    ui.run(host='0.0.0.0', port=8080, favicon='📆', language='de-DE')
+    ui.run(host='0.0.0.0', port=8080, favicon='📆', language='de-DE', storage_secret='uqu7geitaic7eawee2Ieyaoshatietioshai8aiya')
