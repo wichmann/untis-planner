@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 
 from fastapi import Request
 from starlette.responses import RedirectResponse
-from nicegui import app, ui, events
+from nicegui import app, language, ui, events
 
 import untisplanner
 from fullcalendar import FullCalendar
@@ -32,6 +32,42 @@ TEACHER_COLORS = [
 
 UNTIS_API = None
 LESSON_CALENDAR = None
+
+
+class Language:
+    """
+    A class to handle language selection and retrieval.
+
+    Based on: https://github.com/zauberzeug/nicegui/discussions/5840
+    """
+    @property
+    def current(self) -> str:
+        return app.storage.user.get('language', 'en')
+
+    @current.setter
+    def current(self, code: str) -> None:
+        if code in ('de', 'en'):          
+            app.storage.user['language'] = code
+
+    def detect_from_request(self):
+        # auto-detect language from request headers
+        if ui.context.client.request:
+            for lang in ui.context.client.request.headers.get('accept-language', '').split(','):
+                if lang[:2] in ('de', 'en'):
+                    code = lang[:2]
+                    break
+            app.storage.user['language'] = code
+
+    @property
+    def is_de(self) -> bool:
+        return self.current == 'de'
+    
+    @property
+    def is_en(self) -> bool:
+        return self.current == 'en'
+
+
+LANGUAGE = Language()
 
 
 def prepare_events():
@@ -58,14 +94,15 @@ def prepare_events():
                             print(f'Added event: Teacher={teacher}, Start={po.start}, End={po.end}, Classes={po.klassen}, Subjects={po.subjects}')
                 except IndexError as e:
                     if DEBUG:
-                        ui.notify(f'Error processing period: {e}', color='error')
+                        print(f'Error processing period: {e}')
 
 
 def prepare_dropdown(teacher_list):
     """Gets last names for all teachers and prepares the dropdown."""
     teacher_names = [teacher.surname for teacher in teacher_list]
     ui.select(options=teacher_names, multiple=True, with_input=True, new_value_mode='add-unique',
-              clearable=True, label='Select teachers to display:', on_change=handle_teacher_change)
+              clearable=True, label='Select teachers:' if LANGUAGE.is_en else 'Lehrkraft auswählen:',
+              on_change=handle_teacher_change)
 
 
 def handle_teacher_change(event: events.GenericEventArguments):
@@ -75,15 +112,16 @@ def handle_teacher_change(event: events.GenericEventArguments):
     """
     if len(event.value) > 5:
         event.sender.value = app.storage.selected_teachers
-        ui.notify("⚠️ Maximum 5 teachers allowed", color="warning")
+        ui.notify('You can only select up to 5 teachers' if LANGUAGE.is_en
+                  else 'Sie können nur bis zu 5 Lehrkräfte auswählen', color='warning')
     else:
         if DEBUG:
             added = set(event.value) - set(app.storage.selected_teachers)
             removed = set(app.storage.selected_teachers) - set(event.value)
             if added:
-                ui.notify(f'Added: {", ".join(added)}')
+                ui.notify(f'Added: {", ".join(added)}' if LANGUAGE.is_en else f'Hinzugefügt: {", ".join(added)}')
             if removed:
-                ui.notify(f'Removed: {", ".join(removed)}')
+                ui.notify(f'Removed: {", ".join(removed)}' if LANGUAGE.is_en else f'Entfernt: {", ".join(removed)}')
         app.storage.selected_teachers = event.value
         prepare_events()
         prepare_legend.refresh()
@@ -104,7 +142,7 @@ def prepare_calendar():
                 'startTime': '08:00',
                 'endTime': '15:00',
             },
-            'locale': 'de',
+            'locale': LANGUAGE.current,
             'timeZone': 'local',
             'allDaySlot': False,
             'nowIndicator': True,
@@ -141,7 +179,8 @@ def handle_click(event: events.GenericEventArguments):
         classes = e['extendedProps']['classes']
         subjects = e['extendedProps']['subjects']
         if DEBUG:
-            ui.notify(f'Teacher: {title}, Class: {classes}, Subject: {subjects}')
+            ui.notify(f'Teacher: {title}, Class: {classes}, Subject: {subjects}' if LANGUAGE.is_en
+                      else f'Lehrkraft: {title}, Klasse: {classes}, Fach: {subjects}')
 
 
 def handle_change(event: events.GenericEventArguments):
@@ -150,7 +189,8 @@ def handle_change(event: events.GenericEventArguments):
         start_date = datetime.fromisoformat(event.args['info']['startStr']).date()
         end_date = datetime.fromisoformat(event.args['info']['endStr']).date()
         if DEBUG:
-            print(f'Current view range: {start_date} - {end_date}')
+            print(f'Current view range: {start_date} - {end_date}' if LANGUAGE.is_en
+                  else f'Aktuelle Ansicht: {start_date} - {end_date}')
         app.storage.start_date = start_date
         app.storage.end_date = end_date
         prepare_events()
@@ -174,7 +214,8 @@ def preload_logged_in_user(request: Request, teacher_list):
     if 'X-authentik-username' in request.headers:
         username_from_request = request.headers['X-authentik-username']
         if DEBUG:
-            print(f"Authenticated user: {username_from_request}")
+            print(f"Authenticated user: {username_from_request}" if LANGUAGE.is_en
+                  else f"Authentifizierter Benutzer: {username_from_request}")
         teacher_name = [teacher.surname for teacher in teacher_list if str(teacher.surname).casefold() == str(username_from_request).casefold()]
         if teacher_name:
             app.storage.selected_teachers.append(teacher_name[0])
@@ -187,6 +228,7 @@ def preload_logged_in_user(request: Request, teacher_list):
 @ui.page('/')
 def main(request: Request) -> RedirectResponse | None:
     """Main function to set up the NiceGUI app, load configuration, and initialize components."""
+    LANGUAGE.detect_from_request()
     # load configuration from file
     configfile = 'webuntis-config.ini'
     config = configparser.ConfigParser()
@@ -201,7 +243,7 @@ def main(request: Request) -> RedirectResponse | None:
     app.storage.end_date = app.storage.start_date + timedelta(days=6)
     app.storage.selected_teachers = []
     # build UI elements
-    ui.html(f'<h1>{APP_TITLE}</h1>')
+    ui.html(f'<h1 style="font-size: 4em;">{APP_TITLE}</h1>')
     prepare_dropdown(teacher_list)
     prepare_calendar()
     prepare_legend()
