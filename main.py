@@ -10,8 +10,7 @@ import configparser
 from datetime import datetime, timedelta
 
 from fastapi import Request
-from starlette.responses import RedirectResponse
-from nicegui import app, language, ui, events
+from nicegui import app, ui, events
 
 import untisplanner
 from fullcalendar import FullCalendar
@@ -42,15 +41,17 @@ class Language:
     """
     @property
     def current(self) -> str:
+        """Gets the current language code from user storage, defaulting to 'en' if not set."""
         return app.storage.user.get('language', 'en')
 
     @current.setter
     def current(self, code: str) -> None:
-        if code in ('de', 'en'):          
+        """Sets the current language code in user storage if it's a supported language."""
+        if code in ('de', 'en'):
             app.storage.user['language'] = code
 
     def detect_from_request(self):
-        # auto-detect language from request headers
+        """Detects the preferred language from the client's request headers and sets it accordingly."""
         if ui.context.client.request:
             for lang in ui.context.client.request.headers.get('accept-language', '').split(','):
                 if lang[:2] in ('de', 'en'):
@@ -60,10 +61,12 @@ class Language:
 
     @property
     def is_de(self) -> bool:
+        """Returns True if the current language is German ('de'), otherwise False."""
         return self.current == 'de'
-    
+
     @property
     def is_en(self) -> bool:
+        """Returns True if the current language is English ('en'), otherwise False."""
         return self.current == 'en'
 
 
@@ -71,30 +74,37 @@ LANGUAGE = Language()
 
 
 def prepare_events():
-    """
-    Prepare calendar events based on the selected teachers and date range.
-    """
+    """Prepare calendar events based on the selected teachers and date range."""
     LESSON_CALENDAR.clear_events()
     for i, teacher in enumerate(app.storage.client['selected_teachers']):
         current_teacher = UNTIS_API.session.teachers().filter(surname=teacher)[0]
-        tt = UNTIS_API.get_timetable(current_teacher, start=app.storage.client['start_date'], end=app.storage.client['end_date'])
-        for po in tt:
+        timetable_entries = UNTIS_API.get_timetable(current_teacher, start=app.storage.client['start_date'],
+                                     end=app.storage.client['end_date'])
+        for lesson in timetable_entries:
             # filter out periods that aren't lessons
-            if po.klassen and po.subjects[0].name != '---':
-                try:
-                    for _ in po.teachers:
+            if lesson.klassen and lesson.subjects[0].name != '---':
+                add_event_for_lesson(teacher, lesson, TEACHER_COLORS[i % len(TEACHER_COLORS)])
+
+def add_event_for_lesson(teacher, lesson, color):
+    """
+    Adds an event to the calendar for a given lesson, ensuring no duplicates
+    for the same teacher and time slot.
+    """
+    try:
+        for _ in lesson.teachers:
                         # remove existing event for the teacher in the same time slot to avoid duplicates
-                        LESSON_CALENDAR.remove_event(title=teacher, start=str(po.start), end=str(po.end))
+            LESSON_CALENDAR.remove_event(title=teacher, start=str(lesson.start), end=str(lesson.end))
                         # create new event for all periods of the teacher
-                        LESSON_CALENDAR.add_event(title=teacher, start=str(po.start), end=str(po.end),
-                                            display='block', color=TEACHER_COLORS[i % len(TEACHER_COLORS)],
-                                            classes=', '.join(str(klasse) for klasse in po.klassen),
-                                            subjects=', '.join(str(subject) for subject in po.subjects))
-                        if DEBUG:
-                            print(f'Added event: Teacher={teacher}, Start={po.start}, End={po.end}, Classes={po.klassen}, Subjects={po.subjects}')
-                except IndexError as e:
-                    if DEBUG:
-                        print(f'Error processing period: {e}')
+            LESSON_CALENDAR.add_event(title=teacher, start=str(lesson.start), end=str(lesson.end),
+                                      display='block', color=color,
+                                      classes=', '.join(str(klasse) for klasse in lesson.klassen),
+                                      subjects=', '.join(str(subject) for subject in lesson.subjects))
+            if DEBUG:
+                print(f'Added event: Teacher={teacher}, Start={lesson.start}, End={lesson.end}, '
+                                  f'Classes={lesson.klassen}, Subjects={lesson.subjects}')
+    except IndexError as e:
+        if DEBUG:
+            print(f'Error processing period: {e}')
 
 
 def prepare_dropdown(teacher_list):
@@ -216,7 +226,8 @@ def preload_logged_in_user(request: Request, teacher_list):
         if DEBUG:
             print(f"Authenticated user: {username_from_request}" if LANGUAGE.is_en
                   else f"Authentifizierter Benutzer: {username_from_request}")
-        teacher_name = [teacher.surname for teacher in teacher_list if str(teacher.surname).casefold() == str(username_from_request).casefold()]
+        teacher_name = [teacher.surname for teacher in teacher_list
+                        if str(teacher.surname).casefold() == str(username_from_request).casefold()]
         if teacher_name:
             app.storage.client['selected_teachers'].append(teacher_name[0])
             prepare_events()
@@ -226,7 +237,7 @@ def preload_logged_in_user(request: Request, teacher_list):
 
 
 @ui.page('/')
-def main(request: Request) -> RedirectResponse | None:
+def main():
     """Main function to set up the NiceGUI app, load configuration, and initialize components."""
     LANGUAGE.detect_from_request()
     # load configuration from file
@@ -251,4 +262,5 @@ def main(request: Request) -> RedirectResponse | None:
 
 if __name__ in {'__main__', '__mp_main__'}:
     # run the NiceGUI app
-    ui.run(host='0.0.0.0', port=8080, favicon='📆', language='de-DE', storage_secret='uqu7geitaic7eawee2Ieyaoshatietioshai8aiya')
+    ui.run(host='0.0.0.0', port=8080, favicon='📆', language='de-DE',
+           storage_secret='uqu7geitaic7eawee2Ieyaoshatietioshai8aiya')

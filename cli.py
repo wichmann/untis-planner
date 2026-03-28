@@ -55,31 +55,10 @@ def output_lessons(lessons: dict, start: datetime.date, end: datetime.date):
     timetable = [[[] for _ in range(10)] for _ in range(days)]
     for date, teachers in lessons.items():
         day = date.day - start.day - 1
-        match date:
-            case datetime(hour=8, minute=0):
-                hour = 1
-            case datetime(hour=8, minute=45):
-                hour = 2
-            case datetime(hour=9, minute=50):
-                hour = 3
-            case datetime(hour=10, minute=35):
-                hour = 4
-            case datetime(hour=11, minute=40):
-                hour = 5
-            case datetime(hour=12, minute=25):
-                hour = 6
-            case datetime(hour=13, minute=30):
-                hour = 7
-            case datetime(hour=14, minute=15):
-                hour = 8
-            case datetime(hour=15, minute=15):
-                hour = 9
-            case _:
-                hour = 0
+        hour = match_time_to_lesson(date)
         # ignore all lessons outside of daytime school hours
         if hour:
             timetable[day][hour].extend(teachers)
-
     # colors in rich: https://rich.readthedocs.io/en/latest/appendix/colors.html
     table = Table(title='[bold bright_blue]Untis Planer[/bold bright_blue]',
                   show_lines=True, style="bright_white", header_style="bright_blue")
@@ -100,15 +79,41 @@ def output_lessons(lessons: dict, start: datetime.date, end: datetime.date):
             else:
                 row.append("")
         table.add_row(*row)
-
     console = Console()
     console.print(table)
 
 
+def match_time_to_lesson(date):
+    """
+    Match the time to its corresponding lesson slot. Returns 0 if the time does
+    not match daytime school hours.
+    """
+    match date:
+        case datetime(hour=8, minute=0):
+            hour = 1
+        case datetime(hour=8, minute=45):
+            hour = 2
+        case datetime(hour=9, minute=50):
+            hour = 3
+        case datetime(hour=10, minute=35):
+            hour = 4
+        case datetime(hour=11, minute=40):
+            hour = 5
+        case datetime(hour=12, minute=25):
+            hour = 6
+        case datetime(hour=13, minute=30):
+            hour = 7
+        case datetime(hour=14, minute=15):
+            hour = 8
+        case datetime(hour=15, minute=15):
+            hour = 9
+        case _:
+            hour = 0
+    return hour
+
+
 def main():
-    """
-    Main function to read config and start the UntisPlaner.
-    """
+    """Main function to read config and start the UntisPlaner."""
     locale.setlocale(locale.LC_ALL, '')
     logging.basicConfig(level=logging.INFO)
     logging.debug("Reading config file")
