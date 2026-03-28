@@ -75,9 +75,9 @@ def prepare_events():
     Prepare calendar events based on the selected teachers and date range.
     """
     LESSON_CALENDAR.clear_events()
-    for i, teacher in enumerate(app.storage.selected_teachers):
+    for i, teacher in enumerate(app.storage.client['selected_teachers']):
         current_teacher = UNTIS_API.session.teachers().filter(surname=teacher)[0]
-        tt = UNTIS_API.get_timetable(current_teacher, start=app.storage.start_date, end=app.storage.end_date)
+        tt = UNTIS_API.get_timetable(current_teacher, start=app.storage.client['start_date'], end=app.storage.client['end_date'])
         for po in tt:
             # filter out periods that aren't lessons
             if po.klassen and po.subjects[0].name != '---':
@@ -111,18 +111,18 @@ def handle_teacher_change(event: events.GenericEventArguments):
     Reverts the list to the previous value if more than 5 items are selected.
     """
     if len(event.value) > 5:
-        event.sender.value = app.storage.selected_teachers
+        event.sender.value = app.storage.client['selected_teachers']
         ui.notify('You can only select up to 5 teachers' if LANGUAGE.is_en
                   else 'Sie können nur bis zu 5 Lehrkräfte auswählen', color='warning')
     else:
         if DEBUG:
-            added = set(event.value) - set(app.storage.selected_teachers)
-            removed = set(app.storage.selected_teachers) - set(event.value)
+            added = set(event.value) - set(app.storage.client['selected_teachers'])
+            removed = set(app.storage.client['selected_teachers']) - set(event.value)
             if added:
                 ui.notify(f'Added: {", ".join(added)}' if LANGUAGE.is_en else f'Hinzugefügt: {", ".join(added)}')
             if removed:
                 ui.notify(f'Removed: {", ".join(removed)}' if LANGUAGE.is_en else f'Entfernt: {", ".join(removed)}')
-        app.storage.selected_teachers = event.value
+        app.storage.client['selected_teachers'] = event.value
         prepare_events()
         prepare_legend.refresh()
 
@@ -191,8 +191,8 @@ def handle_change(event: events.GenericEventArguments):
         if DEBUG:
             print(f'Current view range: {start_date} - {end_date}' if LANGUAGE.is_en
                   else f'Aktuelle Ansicht: {start_date} - {end_date}')
-        app.storage.start_date = start_date
-        app.storage.end_date = end_date
+        app.storage.client['start_date'] = start_date
+        app.storage.client['end_date'] = end_date
         prepare_events()
 
 
@@ -200,7 +200,7 @@ def handle_change(event: events.GenericEventArguments):
 def prepare_legend():
     """Prepares a legend showing the selected teachers with their corresponding colors."""
     with ui.row().classes('justify-center gap-12 w-full'):
-        for i, teacher_name in enumerate(app.storage.selected_teachers):
+        for i, teacher_name in enumerate(app.storage.client['selected_teachers']):
             with ui.column():
                 color = TEACHER_COLORS[i % len(TEACHER_COLORS)]
                 s = f'background-color: {color}; color: white; padding: 10px 20px;' \
@@ -218,7 +218,7 @@ def preload_logged_in_user(request: Request, teacher_list):
                   else f"Authentifizierter Benutzer: {username_from_request}")
         teacher_name = [teacher.surname for teacher in teacher_list if str(teacher.surname).casefold() == str(username_from_request).casefold()]
         if teacher_name:
-            app.storage.selected_teachers.append(teacher_name[0])
+            app.storage.client['selected_teachers'].append(teacher_name[0])
             prepare_events()
             prepare_legend.refresh()
         return username_from_request
@@ -239,9 +239,9 @@ def main(request: Request) -> RedirectResponse | None:
     UNTIS_API = untisplanner.UntisPlanner(cred['user'], cred['password'], cred['server'], cred['school'])
     teacher_list = UNTIS_API.get_list_of_teachers()
     # define defaults
-    app.storage.start_date = datetime.now().date() - timedelta(days=datetime.now().weekday())
-    app.storage.end_date = app.storage.start_date + timedelta(days=6)
-    app.storage.selected_teachers = []
+    app.storage.client['start_date'] = datetime.now().date() - timedelta(days=datetime.now().weekday())
+    app.storage.client['end_date'] = app.storage.client['start_date'] + timedelta(days=6)
+    app.storage.client['selected_teachers'] = []
     # build UI elements
     ui.html(f'<h1 style="font-size: 4em;">{APP_TITLE}</h1>')
     prepare_dropdown(teacher_list)
