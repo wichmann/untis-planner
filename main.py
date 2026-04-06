@@ -53,11 +53,13 @@ class Language:
     def detect_from_request(self):
         """Detects the preferred language from the client's request headers and sets it accordingly."""
         if ui.context.client.request:
+            code = ''
             for lang in ui.context.client.request.headers.get('accept-language', '').split(','):
                 if lang[:2] in ('de', 'en'):
                     code = lang[:2]
                     break
-            app.storage.user['language'] = code
+            if code:
+                app.storage.user['language'] = code
 
     @property
     def is_de(self) -> bool:
