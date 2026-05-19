@@ -66,7 +66,7 @@ class UntisPlanner:
                 all_lessons[date].append(current_teacher)
         return all_lessons
 
-    def get_timetable(self, teacher, start, end):
+    def get_timetable(self, teacher, start, end, ignore_cancelled=True):
         """
         Fetch the timetable for a specific teacher within the defined date range.
         """
@@ -78,6 +78,8 @@ class UntisPlanner:
         self.set_start_and_end(start, end)
         tt = self.session.timetable(start=start-datetime.timedelta(days=1), end=end, teacher=teacher)
         logging.debug(f"Fetched {len(tt)} periods for {teacher.long_name} from {start} to {end}")
+        if ignore_cancelled:
+            tt = [period for period in tt if not (period.code and period.code == 'cancelled')]
         return tt
 
     def extract_lessons(self, timetable: webuntis.objects.PeriodList):
